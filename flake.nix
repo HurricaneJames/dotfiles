@@ -17,7 +17,7 @@
   outputs = inputs@{ self, nix-darwin, nix-homebrew, home-manager, nixpkgs }: {
     darwinConfigurations."Studio1" = nix-darwin.lib.darwinSystem {
       modules = [ 
-        ./configuration.nix 
+        ./configuration.nix
         nix-homebrew.darwinModules.nix-homebrew
         home-manager.darwinModules.home-manager
         {

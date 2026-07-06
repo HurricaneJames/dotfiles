@@ -16,6 +16,16 @@ in
     jq        # json on the command line
     lazygit
     neovim
+    # languages / runtimes
+    python314
+    # git tooling (git itself is installed via programs.git below)
+    git-lfs
+    # containers — docker-client is CLI + compose plugin + buildx + shell
+    # completions; the actual daemon runs in the colima VM on macOS.
+    docker-client
+    docker-compose
+    colima                        # rootless container runtime VM for macOS
+    amazon-ecr-credential-helper  # docker-credential-ecr-login for AWS ECR
     # the font everything renders in
     nerd-fonts.hack
   ];
@@ -43,6 +53,7 @@ in
     };
   };
 
+  programs.git.enable = true;
   programs.git.settings.user = {
     name = "HurricaneJames";
     email = "HurricaneJamesEsq@gmail.com";
