@@ -28,7 +28,7 @@ Running the switch builds:
 On a brand new Mac, from a bare clone of this repo:
 
 ```sh
-git clone https://github.com/kunchenguid/dotfiles.git
+git clone https://github.com/HurricaneJames/dotfiles.git
 cd dotfiles
 ```
 
@@ -55,10 +55,11 @@ Once Nix is installed (`bootstrap.sh` step 1 handles that), you can check that t
 
 ```sh
 nix flake check --no-build
-nix build .#darwinConfigurations.mac.system --dry-run
+nix build .#darwinConfigurations.<HostName>.system --dry-run
 ```
 
-If you renamed the host label in "Make it yours", substitute your label for `mac` in these commands.
+Substitute `<HostName>` for one of the configuration names declared in
+`flake.nix`'s `darwinConfigurations` block.
 
 ## Daily use
 
@@ -71,15 +72,61 @@ Edit the config files in place, then apply:
 That's it.
 No separate build-and-copy step.
 
+## Per-environment config
+
+Each host in `flake.nix` is built by `mkHost`, which takes an optional path to an
+environment-specific config file:
+
+```nix
+"Studio1" = mkHost null;                         # home profile (base config only)
+"StudioB" = mkHost ./configuration-studiob.nix;  # work profile (base + extras)
+```
+
+The env file layers extras onto the shared base. Every field is optional (see
+`configuration-studiob.nix` for the full schema):
+
+- `homePackages` - extra Nix user packages (StudioB adds `go`)
+- `casks` / `brews` - extra Homebrew casks and formulae
+- `zshSessionVariables` - extra zsh env vars (non-secret; these get baked into
+  the world-readable `/nix/store`)
+- `zshInitContent` - shell-startup snippet appended to `.zshrc`
+
+Hosts that don't need extras pass `null` and get the base config unchanged.
+
+### GHE_API_TOKEN (secret handling)
+
+The work profile exports `GHE_API_TOKEN` for GitHub Enterprise. The token is
+**never** written into Nix - anything Nix reads at build time lands in the
+world-readable `/nix/store`. Instead, `configuration-studiob.nix` generates a
+`.zshrc` line that reads the token from the macOS login Keychain at shell
+startup, so only the `security` command (not the token) is in the store.
+
+One-time setup on the work machine:
+
+```sh
+security add-generic-password -a "$USER" -s GHE_API_TOKEN -w
+```
+
+That prompts for the token value and stores it in your login keychain. The
+first shell that reads it may pop an "allow access" dialog - click **Always
+Allow** and it stays silent afterward (the login keychain unlocks automatically
+when you log into macOS, so new terminals don't re-prompt).
+
 ## Make it yours
 
 This repo is mine.
 If you clone it, change these before you run `bootstrap.sh`:
 
-- **Username and home path** `kunchen` / `/Users/kunchen`, in four places: `flake.nix:26`, `configuration.nix:10-12`, `configuration.nix:30` (the `nix-homebrew.user` setting), and `home.nix:8-9`.
-- **Git identity**, in `home.nix:43-46` (`kunchenguid` / `kun@kunchenguid.com`).
-- **Host label** `"mac"`, in three places: `flake.nix:18` (the `darwinConfigurations."mac"` name), `rebuild.sh:5` (the `#mac` at the end of the flake reference), and `bootstrap.sh`'s first-switch command (also `#mac`).
-  All three have to match.
+- **Username and home path** (`jburnett` / `/Users/jburnett`), in `configuration.nix`
+  (the `system.primaryUser`, `users.users.<name>`, and `nix-homebrew.user`
+  settings) and `home.nix` (`home.username` / `home.homeDirectory`).
+- **Git identity** - this repo reads it from a gitignored, machine-local file
+  rather than hardcoding it; `bootstrap.sh` prompts for your name and email and
+  writes `.dotfiles-gituser.json`, which `flake.nix` reads at build time.
+- **Host names** - the entries in `flake.nix`'s `darwinConfigurations` block
+  (`Studio1`, `StudioB`). `bootstrap.sh --for <HostName>` picks which one a
+  machine installs and saves it so `rebuild.sh` reuses it. Rename or add hosts
+  to match your machines.
 - **CPU architecture**, `hostPlatform` in `configuration.nix` (see Prerequisites above).
 
 **Homebrew cleanup warning:** `configuration.nix` sets `homebrew.onActivation.cleanup = "zap"`.
@@ -101,9 +148,13 @@ If you don't use it, just remove it from `brews` in your copy.
 ## Repo tour
 
 - `flake.nix` - the entry point.
-  Wires up nixpkgs, nix-darwin, home-manager, and nix-homebrew, and declares the `mac` machine.
+  Wires up nixpkgs, nix-darwin, home-manager, and nix-homebrew, and declares each
+  host in `darwinConfigurations` via `mkHost`.
 - `configuration.nix` - system-level config: macOS defaults, Homebrew.
 - `home.nix` - user-level config: shell, git, packages, and the symlinks described below.
+- `<host>-configuration.nix` - optional per-environment extras layered onto the
+  base (e.g. `configuration-studiob.nix`). See "Per-environment config" above.
+- `bootstrap.sh` - one-time fresh-machine setup; `--for <HostName>` selects the config.
 - `rebuild.sh` - re-applies the config after the first switch.
   Run this every time you make a change.
 - `home/` - the actual config files that get symlinked into place (Neovim, WezTerm, herdr, Claude settings, the shared `AGENTS.md`).

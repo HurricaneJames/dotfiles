@@ -39,22 +39,27 @@
       # Build a darwin configuration. Every host reads the same machine-local
       # git identity file; the profiles differ only by what that file contains
       # on each machine (home vs work).
-      mkHost = nix-darwin.lib.darwinSystem {
+      #
+      # `envFile` is an optional path to an environment-specific config (e.g.
+      # ./configuration-studiob.nix) that layers extra packages, homebrew casks
+      # and zsh settings onto the shared base. Pass `null` for a host that only
+      # needs the base config. See configuration-studiob.nix for the schema.
+      mkHost = envFile: nix-darwin.lib.darwinSystem {
         modules = [
-          ./configuration.nix
+          (import ./configuration.nix { inherit envFile; })
           nix-homebrew.darwinModules.nix-homebrew
           home-manager.darwinModules.home-manager
           {
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
-            home-manager.users.jburnett = import ./home.nix { inherit gitUser; };
+            home-manager.users.jburnett = import ./home.nix { inherit gitUser envFile; };
           }
         ];
       };
     in {
       darwinConfigurations = {
-        "Studio1" = mkHost;  # home profile
-        "StudioB" = mkHost;  # work profile
+        "Studio1" = mkHost null;                         # home profile (base only)
+        "StudioB" = mkHost ./configuration-studiob.nix;  # work profile (base + extras)
       };
     };
 }

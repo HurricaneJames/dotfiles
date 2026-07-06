@@ -1,4 +1,13 @@
-{ ... }:
+# `envFile` is an optional path to an environment-specific config (or null).
+# When set, its `casks`/`brews` lists are appended to the shared homebrew set.
+# See configuration-studiob.nix for the full schema.
+{ envFile }:
+
+{ pkgs, ... }:
+
+let
+  env = if envFile == null then { } else import envFile { inherit pkgs; };
+in
 
 {
   # Determinate already manages the Nix daemon, so nix-darwin shouldn't.
@@ -36,10 +45,10 @@
     onActivation.extraFlags = [ "--force" ];
     brews = [
       "herdr"
-    ];
+    ] ++ (env.brews or [ ]);
     casks = [
       "wezterm"
       "claude-code"
-    ];
+    ] ++ (env.casks or [ ]);
   };
 }

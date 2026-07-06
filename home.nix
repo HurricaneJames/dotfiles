@@ -1,9 +1,13 @@
-{ gitUser }:
+# `envFile` is an optional path to an environment-specific config (or null).
+# When set it layers extra home packages, zsh session variables and zsh init
+# content onto the shared base. See configuration-studiob.nix for the schema.
+{ gitUser, envFile }:
 
 { config, pkgs, ... }:
 
 let
   dotfiles = "${config.home.homeDirectory}/.dotfiles";
+  env = if envFile == null then { } else import envFile { inherit pkgs; };
 in
 
 {
@@ -30,7 +34,7 @@ in
     amazon-ecr-credential-helper  # docker-credential-ecr-login for AWS ECR
     # the font everything renders in
     nerd-fonts.hack
-  ];
+  ] ++ (env.homePackages or [ ]);
   fonts.fontconfig.enable = true;
   home.sessionVariables.EDITOR = "nvim";
 
@@ -39,11 +43,13 @@ in
     autosuggestion.enable = true;      # ghost text from history
     syntaxHighlighting.enable = true;  # commands turn green when valid
     initContent = ''
+      setopt nomenucomplete
+      setopt noautomenu
       bindkey '^f' autosuggest-accept
-    '';
+    '' + (env.zshInitContent or "");
     sessionVariables = {
       CLICOLOR = "1";
-    };
+    } // (env.zshSessionVariables or { });
     shellAliases = {
       ".." = "cd ..";
       add = "git add .";
@@ -52,6 +58,7 @@ in
       m = "git switch main";
       cc = "claude --dangerously-skip-permissions";
       co = "codex --full-auto";
+      k = "kubectl";
     };
   };
 
