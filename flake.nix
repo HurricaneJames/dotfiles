@@ -14,18 +14,47 @@
     nix-homebrew.url = "github:zhaofengli/nix-homebrew";
   };
 
-  outputs = inputs@{ self, nix-darwin, nix-homebrew, home-manager, nixpkgs }: {
-    darwinConfigurations."Studio1" = nix-darwin.lib.darwinSystem {
-      modules = [ 
-        ./configuration.nix
-        nix-homebrew.darwinModules.nix-homebrew
-        home-manager.darwinModules.home-manager
-        {
-          home-manager.useGlobalPkgs = true;
-          home-manager.useUserPackages = true;
-          home-manager.users.jburnett = import ./home.nix;
-        }
-      ];
+  outputs = inputs@{ self, nix-darwin, nix-homebrew, home-manager, nixpkgs }:
+    let
+      # The git identity is machine-local and untracked (a work email must not
+      # live in this public repo), so bootstrap.sh writes it and every profile
+      # reads it. Because the file is gitignored, Nix can only see it under
+      # `--impure` (which rebuild.sh/bootstrap.sh pass) - a pure eval can't
+      # reach files outside the flake's git tree.
+      #
+      # The scripts resolve the file's absolute path via shell tilde expansion
+      # (so it works for whatever user runs it, wherever their home lives) and
+      # hand it to the sudo'd rebuild in DOTFILES_GITUSER_FILE. We only read it
+      # here; we don't try to reconstruct the home dir inside Nix.
+      gitUserFile = builtins.getEnv "DOTFILES_GITUSER_FILE";
+      gitUser =
+        if gitUserFile != "" && builtins.pathExists gitUserFile
+        then builtins.fromJSON (builtins.readFile gitUserFile)
+        else throw ''
+          Git identity file not found (DOTFILES_GITUSER_FILE=${gitUserFile}).
+          Run ./bootstrap.sh (or ./rebuild.sh) to create it - it prompts for
+          your git name and email and writes them there.
+        '';
+
+      # Build a darwin configuration. Every host reads the same machine-local
+      # git identity file; the profiles differ only by what that file contains
+      # on each machine (home vs work).
+      mkHost = nix-darwin.lib.darwinSystem {
+        modules = [
+          ./configuration.nix
+          nix-homebrew.darwinModules.nix-homebrew
+          home-manager.darwinModules.home-manager
+          {
+            home-manager.useGlobalPkgs = true;
+            home-manager.useUserPackages = true;
+            home-manager.users.jburnett = import ./home.nix { inherit gitUser; };
+          }
+        ];
+      };
+    in {
+      darwinConfigurations = {
+        "Studio1" = mkHost;  # home profile
+        "StudioB" = mkHost;  # work profile
+      };
     };
-  };
 }

@@ -8,5 +8,10 @@ home/.config/herdr/*.sock
 result
 result-*
 
+# Which flake configuration this machine uses (home vs work) - machine-local
+.dotfiles-profile
+# Machine-local git identity (name/email) - keeps work email out of the repo
+.dotfiles-gituser.json
+
 # no-mistakes local validation state - never commit in this public repo
 .no-mistakes/

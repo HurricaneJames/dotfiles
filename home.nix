@@ -1,3 +1,5 @@
+{ gitUser }:
+
 { config, pkgs, ... }:
 
 let
@@ -54,10 +56,7 @@ in
   };
 
   programs.git.enable = true;
-  programs.git.settings.user = {
-    name = "HurricaneJames";
-    email = "HurricaneJamesEsq@gmail.com";
-  };
+  programs.git.settings.user = gitUser;
 
   programs.starship = {
     enable = true;
