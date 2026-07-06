@@ -81,6 +81,22 @@ echo "==> Step 3: first darwin-rebuild switch (pinned to nix-darwin-26.05)"
 # on PATH here. Resolve the absolute path first and invoke that instead.
 # --impure lets the flake read the gitignored identity file; the inline
 # VAR=val form injects it past sudo's env reset so the eval can find it.
+# The home-manager activation step is launched by the darwin activate script as
+# `sudo -u <user> --set-home ...`. On a machine with a managed sudoers
+# `secure_path` (e.g. MDM/CyberArk), that inner sudo strips /nix/... from PATH,
+# so home-manager's `dirname $(readlink $(type -p nix-env))` self-location comes
+# back empty and activation dies with "nix-build: command not found". We can't
+# edit the managed sudoers, but secure_path always includes /usr/local/bin, so
+# we drop a stable symlink to nix-env there for the activation to find. Points
+# at the profile path (not a store path) so it survives nix upgrades. rebuild.sh
+# does the same before every switch; this is the fresh-machine equivalent.
+NIX_ENV="/nix/var/nix/profiles/default/bin/nix-env"
+[ -e "$NIX_ENV" ] || NIX_ENV="$(command -v nix-env || true)"
+if [ -n "$NIX_ENV" ] && [ "$(readlink /usr/local/bin/nix-env 2>/dev/null)" != "$NIX_ENV" ]; then
+  sudo mkdir -p /usr/local/bin
+  sudo ln -sfn "$NIX_ENV" /usr/local/bin/nix-env
+fi
+
 NIX_BIN="$(command -v nix)"
 sudo DOTFILES_GITUSER_FILE="$GITUSER_FILE" \
   "$NIX_BIN" run github:nix-darwin/nix-darwin/nix-darwin-26.05#darwin-rebuild -- \

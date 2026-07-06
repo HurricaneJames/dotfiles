@@ -52,6 +52,11 @@
           {
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
+            # If a file home-manager wants to manage already exists (e.g. a
+            # ~/.zshrc from a prior setup), rename it to <file>.hm-bak instead
+            # of aborting the activation. Lets a machine adopt these dotfiles
+            # without hand-removing what was there first.
+            home-manager.backupFileExtension = "hm-bak";
             home-manager.users.jburnett = import ./home.nix { inherit gitUser envFile; };
           }
         ];
