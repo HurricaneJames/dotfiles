@@ -29,6 +29,9 @@ in
     initContent = ''
       bindkey '^f' autosuggest-accept
     '';
+    sessionVariables = {
+      CLICOLOR = "1";
+    };
     shellAliases = {
       ".." = "cd ..";
       add = "git add .";
