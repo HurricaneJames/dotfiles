@@ -1,0 +1,83 @@
+{
+  "awsAuthRefresh": "aws sso login --sso-session anduril.commercial 1>&2",
+  "companyAnnouncements": [
+    "\n █████╗ ███╗   ██╗██████╗ ██╗   ██╗██████╗ ██╗██╗     \n██╔══██╗████╗  ██║██╔══██╗██║   ██║██╔══██╗██║██║     \n███████║██╔██╗ ██║██║  ██║██║   ██║██████╔╝██║██║     \n██╔══██║██║╚██╗██║██║  ██║██║   ██║██╔══██╗██║██║     \n██║  ██║██║ ╚████║██████╔╝╚██████╔╝██║  ██║██║███████╗\n╚═╝  ╚═╝╚═╝  ╚═══╝╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝╚══════╝\nExplore custom anduril plugins (/plugins) • Need help? Ask in #help-dx or #claude-code!\n"
+  ],
+  "effortLevel": "high",
+  "enabledPlugins": {
+    "chrome-devtools-mcp@chrome-devtools-plugins": true,
+    "frontend-design@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true
+  },
+  "env": {
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "us.anthropic.claude-sonnet-5[1m]",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "us.anthropic.claude-opus-4-8[1m]",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "us.anthropic.claude-sonnet-5[1m]",
+    "ANTHROPIC_MODEL": "us.anthropic.claude-opus-4-8[1m]",
+    "ANTHROPIC_SMALL_FAST_MODEL": "us.anthropic.claude-sonnet-4-6",
+    "AWS_PROFILE": "bedrock.commercial",
+    "AWS_REGION": "us-west-2",
+    "CLAUDE_CODE_ATTRIBUTION_HEADER": "0",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "CLAUDE_CODE_ENABLE_TELEMETRY": "1",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "us.anthropic.claude-sonnet-4-6[1m]",
+    "CLAUDE_CODE_USE_BEDROCK": "1",
+    "CLAUDE_CODE_USE_MANTLE": "1",
+    "OTEL_EXPORTER_OTLP_ENDPOINT": "https://armory.anduril.dev",
+    "OTEL_EXPORTER_OTLP_PROTOCOL": "http/json",
+    "OTEL_LOGS_EXPORTER": "otlp",
+    "OTEL_LOGS_EXPORT_INTERVAL": "5000",
+    "OTEL_METRICS_EXPORTER": "otlp",
+    "OTEL_METRIC_EXPORT_INTERVAL": "10000",
+    "OTEL_RESOURCE_ATTRIBUTES": "user_name=jburnett"
+  },
+  "extraKnownMarketplaces": {
+    "chrome-devtools-plugins": {
+      "source": {
+        "repo": "ChromeDevTools/chrome-devtools-mcp",
+        "source": "github"
+      }
+    }
+  },
+  "model": "opus",
+  "permissions": {
+    "allow": [
+      "Bash(cmux --help)",
+      "Bash(cmux help:*)",
+      "Bash(cmux tab-action:*)",
+      "Bash(cmux move-surface:*)",
+      "Bash(cmux select-workspace:*)",
+      "Bash(nix build *)",
+      "Bash(nix log *)",
+      "Bash(nix hash *)",
+      "Bash(grype *)",
+      "Bash(* --help *)",
+      "Bash(* --version *)",
+      "Bash(jj status *)",
+      "Bash(jj log *)",
+      "WebFetch(domain:nvd.nist.gov)",
+      "WebFetch(domain:sources.debian.org)",
+      "Bash(cd * && bazel configure *)",
+      "Bash(cd * && pnpm types *)",
+      "Bash(cd * && pnpm format *)",
+      "Bash(pnpm types *)",
+      "Bash(pnpm test *)",
+      "Bash(pnpm format *)",
+      "Bash(pnpm types*)",
+      "Bash(pnpm lint*)",
+      "Bash(pnpm stylelint*)",
+      "Bash(bazel configure*)",
+      "Bash(git diff*)",
+      "Bash(git status*)",
+      "Bash(npx eslint*)"
+    ]
+  },
+  "skipDangerousModePermissionPrompt": true,
+  "skipWebFetchPreflight": true,
+  "statusLine": {
+    "command": "bash $HOME/.claude/statusline-command.sh",
+    "type": "command"
+  },
+  "theme": "dark-ansi",
+  "tui": "fullscreen"
+}

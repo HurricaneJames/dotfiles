@@ -10,11 +10,19 @@
   # Extra home-manager packages (appended to home.nix's home.packages).
   homePackages = with pkgs; [
     go  # golang for work
+    kubectl
   ];
 
   # Extra homebrew casks / brews (appended to configuration.nix's homebrew set).
   casks = [ ];
   brews = [ ];
+
+  # Override the source of specific home.file config symlinks for this env
+  # (see home.nix). Keyed by target relative to $HOME, valued by source
+  # relative to the dotfiles repo root. Work needs its own Claude settings.
+  configOverrides = {
+    ".claude/settings.json" = "home/.claude/settings.studiob.json";
+  };
 
   # Extra zsh session variables (merged into home.nix's sessionVariables).
   # For non-secret values only - these are baked into the world-readable

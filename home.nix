@@ -8,6 +8,22 @@
 let
   dotfiles = "${config.home.homeDirectory}/.dotfiles";
   env = if envFile == null then { } else import envFile { inherit pkgs; };
+
+  # Config files symlinked edit-in-place: the real file stays in my repo, the
+  # target under $HOME just points at it. Keyed by target (relative to $HOME),
+  # valued by source (relative to the dotfiles repo root). An environment can
+  # replace a source - or add a brand-new file - via `env.configOverrides`
+  # (see configuration-studiob.nix); the `//` lets its entries win.
+  baseConfigFiles = {
+    ".config/wezterm"            = "home/.config/wezterm";
+    ".config/nvim"               = "home/.config/nvim";
+    ".config/herdr"              = "home/.config/herdr";
+    ".claude/settings.json"      = "home/.claude/settings.json";
+    ".claude/CLAUDE.md"          = "home/AGENTS.md";
+    ".codex/AGENTS.md"           = "home/AGENTS.md";
+    ".config/opencode/AGENTS.md" = "home/AGENTS.md";
+  };
+  configFiles = baseConfigFiles // (env.configOverrides or { });
 in
 
 {
@@ -22,9 +38,12 @@ in
     jq        # json on the command line
     lazygit
     neovim
+    tmux
+    mosh
     # languages / runtimes
     python314
     # git tooling (git itself is installed via programs.git below)
+    gh
     git-lfs
     # containers — docker-client is CLI + compose plugin + buildx + shell
     # completions; the actual daemon runs in the colima VM on macOS.
@@ -78,20 +97,9 @@ in
     };
   };
 
-  # Edit-in-place: the real file stays in my repo, ~/.config just points at it.
-  home.file.".config/wezterm".source =
-    config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/.config/wezterm";
-  home.file.".config/nvim".source =
-    config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/.config/nvim";
-  home.file.".config/herdr".source =
-    config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/.config/herdr";
-  home.file.".claude/settings.json".source =
-    config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/.claude/settings.json";
-
-  home.file.".claude/CLAUDE.md".source =
-    config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/AGENTS.md";
-  home.file.".codex/AGENTS.md".source =
-    config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/AGENTS.md";
-  home.file.".config/opencode/AGENTS.md".source =
-    config.lib.file.mkOutOfStoreSymlink "${dotfiles}/home/AGENTS.md";
+  home.file = builtins.mapAttrs
+    (target: src: {
+      source = config.lib.file.mkOutOfStoreSymlink "${dotfiles}/${src}";
+    })
+    configFiles;
 }
