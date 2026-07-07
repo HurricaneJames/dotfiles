@@ -26,6 +26,31 @@ in
     home = "/Users/jburnett";
     shell = pkgs.zsh;
   };
+
+  # New-terminal startup was ~0.8s warm / ~4s cold. The cost was the plain
+  # `compinit` nix-darwin puts in /etc/zshrc: it runs `compaudit` (a security
+  # stat() over all ~20 fpath dirs, most in the Nix store) on EVERY launch,
+  # even when ~/.zcompdump is valid - ~600ms warm, seconds cold. `compinit -C`
+  # skips that audit and just sources the cached dump.
+  #
+  # So: disable the global compinit and run our own from interactiveShellInit.
+  # Fast path (`-C`) when the dump is <24h old; a full rebuild+audit otherwise,
+  # then touch the dump to reset the 24h clock. New completions installed by a
+  # rebuild still get picked up within a day (and immediately on a fresh dump).
+  programs.zsh.enableGlobalCompInit = false;
+  programs.zsh.interactiveShellInit = ''
+    autoload -Uz compinit
+    () {
+      local dump=''${ZDOTDIR:-$HOME}/.zcompdump
+      local -a fresh=($dump(Nmh-24))
+      if (( $#fresh )); then
+        compinit -C -d $dump
+      else
+        compinit -d $dump
+        touch $dump
+      fi
+    }
+  '';
   system.stateVersion = 6;
   system.defaults = {
     NSGlobalDomain = {
