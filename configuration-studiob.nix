@@ -11,6 +11,7 @@
   homePackages = with pkgs; [
     go  # golang for work
     kubectl
+    amazon-ecr-credential-helper  # docker-credential-ecr-login for AWS ECR
   ];
 
   # Extra homebrew casks / brews (appended to configuration.nix's homebrew set).

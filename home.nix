@@ -38,7 +38,6 @@ in
     jq        # json on the command line
     lazygit
     neovim
-    tmux
     mosh
     # languages / runtimes
     python314
@@ -50,7 +49,6 @@ in
     docker-client
     docker-compose
     colima                        # rootless container runtime VM for macOS
-    amazon-ecr-credential-helper  # docker-credential-ecr-login for AWS ECR
     # the font everything renders in
     nerd-fonts.hack
   ] ++ (env.homePackages or [ ]);
