@@ -59,6 +59,7 @@ in
 
   programs.zsh = {
     enable = true;
+    enableCompletion = false;          # /etc/zshrc (nix-darwin) already runs compinit; avoid a 2nd ~3s compinit
     autosuggestion.enable = true;      # ghost text from history
     syntaxHighlighting.enable = true;  # commands turn green when valid
     initContent = ''

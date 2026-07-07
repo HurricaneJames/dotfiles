@@ -17,8 +17,14 @@ in
   nixpkgs.hostPlatform = "aarch64-darwin"; # use x86_64-darwin for Intel CPU
 
   system.primaryUser = "jburnett";
+  # Use the Nix zsh (5.9.1) as the login shell so it, tmux's default-shell, and
+  # everything on $PATH are the same binary. Otherwise Apple's /bin/zsh (5.9)
+  # and the Nix zsh share one ~/.zcompdump; each rejects the other's version and
+  # rebuilds the ~1000-entry cache on every alternating launch (2-9s of stat()).
+  environment.shells = [ pkgs.zsh ];
   users.users.jburnett = {
     home = "/Users/jburnett";
+    shell = pkgs.zsh;
   };
   system.stateVersion = 6;
   system.defaults = {
