@@ -17,8 +17,8 @@
     home-manager-linux.url = "github:nix-community/home-manager/release-26.05";
     home-manager-linux.inputs.nixpkgs.follows = "nixpkgs-linux";
     # herdr is not yet in the 26.05 stable channel; pull it from unstable.
-    # Intentionally unpinned/unfollowed - herdr isn't version-sensitive, and a
-    # floating unstable snapshot is fine for the single package we overlay.
+    # Deliberately not `follows`-ed to nixpkgs-linux (it needs the unstable tree);
+    # it's still pinned in flake.lock and only moves on `nix flake update`.
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
 
     nix-homebrew.url = "github:zhaofengli/nix-homebrew";

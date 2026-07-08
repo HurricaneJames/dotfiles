@@ -2,12 +2,12 @@
 #
 # flake.nix wires this in via `mkHost ./configuration-studiob.nix`; each host
 # either points mkHost at a file like this or passes `null` for base-only.
-# Every field below is optional - configuration.nix / home.nix read them with
+# Every field below is optional - configuration.nix / home-common.nix read them with
 # `env.<field> or <default>`, so you can drop any you don't need.
 { pkgs, ... }:
 
 {
-  # Extra home-manager packages (appended to home.nix's home.packages).
+  # Extra home-manager packages (appended to home-common.nix's home.packages).
   homePackages = with pkgs; [
     go  # golang for work
     kubectl
@@ -19,20 +19,20 @@
   brews = [ ];
 
   # Override the source of specific home.file config symlinks for this env
-  # (see home.nix). Keyed by target relative to $HOME, valued by source
+  # (see home-common.nix). Keyed by target relative to $HOME, valued by source
   # relative to the dotfiles repo root. Work needs its own Claude settings.
   configOverrides = {
     ".claude/settings.json" = "home/.claude/settings.studiob.json";
   };
 
-  # Extra zsh session variables (merged into home.nix's sessionVariables).
+  # Extra zsh session variables (merged into home-common.nix's sessionVariables).
   # For non-secret values only - these are baked into the world-readable
   # /nix/store. Secrets belong in zshInitContent below (read at shell startup).
   zshSessionVariables = {
     NIX_PATH = "/Users/jburnett/sources/anduril-nixpkgs";
   };
 
-  # Appended to home.nix's zsh initContent, run at every shell startup.
+  # Appended to home-common.nix's zsh initContent, run at every shell startup.
   #
   # GHE_API_TOKEN is pulled from the macOS login Keychain at startup rather
   # than being written here, so the token itself never lands in the
