@@ -57,7 +57,7 @@
             # of aborting the activation. Lets a machine adopt these dotfiles
             # without hand-removing what was there first.
             home-manager.backupFileExtension = "hm-bak";
-            home-manager.users.jburnett = import ./home.nix { inherit gitUser envFile; };
+            home-manager.users.jburnett = import ./home-darwin.nix { inherit gitUser envFile; };
           }
         ];
       };
