@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Takes a fresh Mac from nothing to a built nix-darwin config.
+# Bootstraps a new machine from nothing to a built config: nix-darwin on macOS,
+# standalone home-manager on Linux (branched on `uname` below).
 # Run this once. After it finishes, use ./rebuild.sh for every later change.
 set -euo pipefail
 
@@ -8,10 +9,15 @@ PROFILE_FILE="$DIR/.dotfiles-profile"
 # Absolute path (works for any user, wherever their home lives) to the
 # machine-local git identity. flake.nix reads it via DOTFILES_GITUSER_FILE.
 GITUSER_FILE="$DIR/.dotfiles-gituser.json"
+OS="$(uname -s)"   # Darwin or Linux
 
 # Which flake configuration (darwinConfigurations.<name>) to install.
 # Home profile is the default; pass --for StudioB for the work machine.
-CONFIG="Studio1"
+if [ "$OS" = "Linux" ]; then
+  CONFIG="jburnett@linux"
+else
+  CONFIG="Studio1"
+fi
 while [ $# -gt 0 ]; do
   case "$1" in
     --for)
@@ -54,10 +60,56 @@ echo "==> Step 2: symlink this repo to ~/.dotfiles"
 # has to exist before the first switch or the build will fail to find them.
 ln -sfn "$DIR" ~/.dotfiles
 
+# --impure (used by every eval/build below) so the flake can read the
+# (gitignored) git identity file.
+export DOTFILES_GITUSER_FILE="$GITUSER_FILE"
+
+if [ "$OS" = "Linux" ]; then
+  # --- Linux: standalone home-manager ---------------------------------------
+  # Validate the requested homeConfiguration exists before building.
+  if ! nix eval --impure --raw \
+      "$DIR#homeConfigurations.\"$CONFIG\".activationPackage.outPath" >/dev/null 2>&1; then
+    echo "error: '$CONFIG' is not a homeConfiguration in flake.nix." >&2
+    echo "       available configurations:" >&2
+    nix eval --impure --apply builtins.attrNames "$DIR#homeConfigurations" --json 2>/dev/null \
+      | tr -d '[]"' | tr ',' '\n' | sed 's/^/         - /' >&2
+    exit 1
+  fi
+  printf '%s\n' "$CONFIG" > "$PROFILE_FILE"
+  echo "==> Using flake configuration: $CONFIG (saved to $PROFILE_FILE)"
+
+  echo "==> Step 3: first home-manager switch"
+  # home-manager isn't on PATH yet on a fresh box, so run it from the flake once.
+  # --impure lets the flake read the gitignored git identity file.
+  nix run github:nix-community/home-manager/release-26.05 -- \
+    switch --impure --flake "$DIR#$CONFIG"
+
+  echo "==> Step 4: make the Nix zsh your login shell"
+  # home-manager cannot set the login shell; do it here (idempotent).
+  ZSH_PATH="$HOME/.nix-profile/bin/zsh"
+  if [ -x "$ZSH_PATH" ]; then
+    grep -qxF "$ZSH_PATH" /etc/shells || echo "$ZSH_PATH" | sudo tee -a /etc/shells >/dev/null
+    if [ "$(getent passwd "$USER" | cut -d: -f7)" != "$ZSH_PATH" ]; then
+      # Guard chsh so a wrong password / cancel doesn't abort under `set -e`.
+      if chsh -s "$ZSH_PATH"; then
+        echo "    login shell set to $ZSH_PATH (log out/in for it to take effect)"
+      else
+        echo "    warning: chsh failed; set it manually: chsh -s $ZSH_PATH" >&2
+      fi
+    else
+      echo "    login shell already $ZSH_PATH"
+    fi
+  else
+    echo "    warning: $ZSH_PATH not found; skipping chsh (is zsh in home.packages for $CONFIG?)" >&2
+  fi
+
+  echo "==> Done. Use ./rebuild.sh for future changes."
+  exit 0
+fi
+
+# --- macOS: nix-darwin ------------------------------------------------------
 # Fail early if the requested configuration doesn't exist in the flake, before
 # we hand it to darwin-rebuild (which would otherwise fail more cryptically).
-# --impure so the flake can read the (gitignored) git identity file.
-export DOTFILES_GITUSER_FILE="$GITUSER_FILE"
 if ! nix eval --impure --raw "$DIR#darwinConfigurations.$CONFIG.system.outPath" >/dev/null 2>&1; then
   echo "error: '$CONFIG' is not a darwinConfiguration in flake.nix." >&2
   echo "       available configurations:" >&2
