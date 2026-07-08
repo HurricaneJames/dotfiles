@@ -14,6 +14,19 @@
 
 Full design at `docs/superpowers/specs/2026-07-07-ubuntu-support-design.md`. Read it if any task is ambiguous.
 
+## Deviations recorded during execution
+
+Two adjustments were made while implementing (both verified and kept):
+
+1. **`herdr` from `nixpkgs-unstable` (Task 3).** `herdr` is not in the stable
+   `nixos-26.05` channel, so `flake.nix` adds a `nixpkgs-unstable` input and a
+   lazy overlay `(_: _: { herdr = unstable.herdr; })` on the Linux pkgs. The
+   overlay touches only `herdr`; everything else stays on stable 26.05.
+2. **`programs.home-manager.enable = true` in `home-linux.nix` (Task 6).**
+   Standalone home-manager doesn't install the `home-manager` CLI unless this is
+   set, and `rebuild.sh` needs it. `rebuild.sh`'s Linux branch also falls back to
+   `nix run` when the CLI isn't yet on PATH (first-ever rebuild).
+
 ## Verification model
 
 There is no unit-test framework here — the "tests" are Nix evaluation/build commands. The two invariants every task must preserve:
