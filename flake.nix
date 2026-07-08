@@ -11,10 +11,21 @@
     home-manager.url = "github:nix-community/home-manager/release-26.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
+    # Linux uses the NixOS channel (the -darwin channel above is macOS-cached),
+    # with its own home-manager instance following it.
+    nixpkgs-linux.url = "github:NixOS/nixpkgs/nixos-26.05";
+    home-manager-linux.url = "github:nix-community/home-manager/release-26.05";
+    home-manager-linux.inputs.nixpkgs.follows = "nixpkgs-linux";
+    # herdr is not yet in the 26.05 stable channel; pull it from unstable.
+    # Intentionally unpinned/unfollowed - herdr isn't version-sensitive, and a
+    # floating unstable snapshot is fine for the single package we overlay.
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+
     nix-homebrew.url = "github:zhaofengli/nix-homebrew";
   };
 
-  outputs = inputs@{ self, nix-darwin, nix-homebrew, home-manager, nixpkgs }:
+  outputs = inputs@{ self, nix-darwin, nix-homebrew, home-manager, nixpkgs
+                   , nixpkgs-linux, home-manager-linux, nixpkgs-unstable }:
     let
       # The git identity is machine-local and untracked (a work email must not
       # live in this public repo), so bootstrap.sh writes it and every profile
@@ -61,10 +72,34 @@
           }
         ];
       };
+
+      # Build a standalone home-manager configuration for Linux. No nix-darwin
+      # layer, so allowUnfree (claude-code) is set on the pkgs import here.
+      # herdr is not yet in nixos-26.05; overlay it from nixpkgs-unstable.
+      mkLinuxHome = envFile:
+        let
+          unstable = import nixpkgs-unstable {
+            system = "x86_64-linux";
+            config.allowUnfree = true;
+          };
+        in
+        home-manager-linux.lib.homeManagerConfiguration {
+          pkgs = import nixpkgs-linux {
+            system = "x86_64-linux";
+            config.allowUnfree = true;
+            overlays = [ (_: _: { herdr = unstable.herdr; }) ];
+          };
+          modules = [ (import ./home-linux.nix { inherit gitUser envFile; }) ];
+        };
     in {
       darwinConfigurations = {
         "Studio1" = mkHost null;                         # home profile (base only)
         "StudioB" = mkHost ./configuration-studiob.nix;  # work profile (base + extras)
+      };
+
+      homeConfigurations = {
+        # One fixed entry serves any Linux box (hostname-independent).
+        "jburnett@linux" = mkLinuxHome ./configuration-ubuntu.nix;
       };
     };
 }
