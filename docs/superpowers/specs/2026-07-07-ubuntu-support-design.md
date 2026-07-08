@@ -17,8 +17,9 @@ Homebrew installed, and shell-setup handled by the bootstrap script.
 - **macOS stays on nix-darwin.** Linux gets a new standalone-Nix path. Two build
   mechanisms; the working Mac path is behaviorally unchanged.
 - **No Homebrew on Linux.** What Homebrew installed on mac (`herdr`, `wezterm`,
-  `claude-code`) becomes regular Nix `home.packages` on Linux. All three are in
-  nixpkgs for `x86_64-linux` (verified: herdr 0.7.1, wezterm, claude-code 2.1.x).
+  `claude-code`) becomes regular Nix `home.packages` on Linux. `wezterm` and
+  `claude-code` are in the stable `nixos-26.05` channel; `herdr` is **not** in
+  stable, so it is overlaid from `nixos-unstable` (see flake.nix section).
 - **zsh is installed via Nix, is the same fast-compinit config as mac, and is
   the default login shell.** `bootstrap.sh` registers it in `/etc/shells` and
   runs `chsh` (home-manager cannot).
@@ -68,6 +69,8 @@ binary-cache hits):
 nixpkgs-linux.url = "github:NixOS/nixpkgs/nixos-26.05";
 home-manager-linux.url = "github:nix-community/home-manager/release-26.05";
 home-manager-linux.inputs.nixpkgs.follows = "nixpkgs-linux";
+# herdr isn't in stable 26.05; overlay it from unstable (intentionally unpinned).
+nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
 ```
 
 Add a `mkLinuxHome` helper parallel to `mkHost`, reading the same gitignored
@@ -75,10 +78,17 @@ Add a `mkLinuxHome` helper parallel to `mkHost`, reading the same gitignored
 
 ```nix
 mkLinuxHome = envFile:
+  let
+    unstable = import nixpkgs-unstable {
+      system = "x86_64-linux";
+      config.allowUnfree = true;
+    };
+  in
   home-manager-linux.lib.homeManagerConfiguration {
     pkgs = import nixpkgs-linux {
       system = "x86_64-linux";
       config.allowUnfree = true;   # claude-code is unfree; no nix-darwin layer to set this
+      overlays = [ (_: _: { herdr = unstable.herdr; }) ];  # herdr only in unstable
     };
     modules = [ (import ./home-linux.nix { inherit gitUser envFile; }) ];
   };
