@@ -3,6 +3,7 @@ set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 PROFILE_FILE="$DIR/.dotfiles-profile"
 GITUSER_FILE="$DIR/.dotfiles-gituser.json"
+OS="$(uname -s)"   # Darwin or Linux
 
 ln -sfn "$DIR" ~/.dotfiles
 
@@ -40,7 +41,11 @@ ensure_nix_on_secure_path() {
 
 # Confirm a configuration name actually exists in flake.nix.
 config_exists() {
-  nix eval --impure --raw "$DIR#darwinConfigurations.$1.system.outPath" >/dev/null 2>&1
+  if [ "$OS" = "Linux" ]; then
+    nix eval --impure --raw "$DIR#homeConfigurations.\"$1\".activationPackage.outPath" >/dev/null 2>&1
+  else
+    nix eval --impure --raw "$DIR#darwinConfigurations.$1.system.outPath" >/dev/null 2>&1
+  fi
 }
 
 # Use the configuration chosen at bootstrap time. If none was saved (or it no
@@ -58,10 +63,20 @@ if [ -z "$CONFIG" ] || ! config_exists "$CONFIG"; then
   while IFS= read -r line; do
     [ -n "$line" ] && CONFIGS+=("$line")
   done < <(
-    nix eval --impure --apply builtins.attrNames "$DIR#darwinConfigurations" --json 2>/dev/null \
-      | tr -d '[]"' | tr ',' '\n'
+    if [ "$OS" = "Linux" ]; then
+      nix eval --impure --apply builtins.attrNames "$DIR#homeConfigurations" --json 2>/dev/null
+    else
+      nix eval --impure --apply builtins.attrNames "$DIR#darwinConfigurations" --json 2>/dev/null
+    fi | tr -d '[]"' | tr ',' '\n'
   )
-  [ "${#CONFIGS[@]}" -gt 0 ] || { echo "error: no darwinConfigurations found in flake.nix" >&2; exit 1; }
+  [ "${#CONFIGS[@]}" -gt 0 ] || {
+    if [ "$OS" = "Linux" ]; then
+      echo "error: no homeConfigurations found in flake.nix" >&2
+    else
+      echo "error: no darwinConfigurations found in flake.nix" >&2
+    fi
+    exit 1
+  }
   select choice in "${CONFIGS[@]}"; do
     [ -n "${choice:-}" ] && { CONFIG="$choice"; break; }
     echo "Please pick a number from the list." >&2
@@ -69,6 +84,21 @@ if [ -z "$CONFIG" ] || ! config_exists "$CONFIG"; then
   printf '%s\n' "$CONFIG" > "$PROFILE_FILE"
   echo "==> Saved configuration '$CONFIG' to $PROFILE_FILE"
 fi
+
+if [ "$OS" = "Linux" ]; then
+  # Standalone home-manager: no sudo, no secure_path dance, no darwin-rebuild.
+  # Prefer the installed CLI; fall back to `nix run` when it isn't on PATH yet
+  # (e.g. the very first rebuild, before the profile is on this shell's PATH).
+  # --impure so the flake can read the gitignored identity file.
+  if command -v home-manager >/dev/null 2>&1; then
+    exec home-manager switch --impure --flake "$DIR#$CONFIG"
+  else
+    exec nix run github:nix-community/home-manager/release-26.05 -- \
+      switch --impure --flake "$DIR#$CONFIG"
+  fi
+fi
+
+# --- macOS: nix-darwin (everything below is unchanged) ----------------------
 
 # Make nix-env reachable from the home-manager activation step (see the helper).
 ensure_nix_on_secure_path
