@@ -2,8 +2,8 @@
 
 Watch the walkthrough: https://youtu.be/5N-okeDdIuI
 
-My personal Mac setup, managed with nix-darwin and home-manager.
-One repo, one command, and a fresh Mac ends up configured the same way every time.
+My personal Mac and Ubuntu Linux setup, managed with nix-darwin and home-manager.
+One repo, one command, and a fresh machine ends up configured the same way every time.
 
 ## What you get
 
@@ -22,6 +22,7 @@ Running the switch builds:
 - Apple Silicon Mac, by default.
 - Intel Mac: change one line.
   In `configuration.nix`, set `nixpkgs.hostPlatform = "x86_64-darwin";` (the comment right there tells you the same thing).
+- Ubuntu 22.04 x86_64: supported via standalone home-manager (see the Linux setup section below).
 
 ## Fresh-machine setup
 
@@ -43,7 +44,7 @@ Before you run it: open the config files and change the values listed in "Make i
 
 1. Installs Determinate Nix, if it isn't already installed.
 2. Symlinks this repo to `~/.dotfiles`.
-   This has to happen before the first build, because `home.nix` points at config files through `~/.dotfiles`.
+   This has to happen before the first build, because `home-common.nix` points at config files through `~/.dotfiles`.
 3. Runs the first `darwin-rebuild switch`.
    It fetches the `darwin-rebuild` tool from the nix-darwin 26.05 release branch, then applies this repo's locked flake config.
 
@@ -60,6 +61,41 @@ nix build .#darwinConfigurations.<HostName>.system --dry-run
 
 Substitute `<HostName>` for one of the configuration names declared in
 `flake.nix`'s `darwinConfigurations` block.
+
+### Linux (Ubuntu x86_64)
+
+This repo also configures an Ubuntu 22.04 x86_64 machine, using standalone
+home-manager instead of nix-darwin. There's no `system.defaults` layer on Linux,
+and packages come from Nix rather than Homebrew.
+
+```sh
+git clone https://github.com/HurricaneJames/dotfiles.git ~/dotfiles
+cd ~/dotfiles
+./bootstrap.sh
+```
+
+`bootstrap.sh` detects Linux (via `uname`) and:
+
+1. Installs Determinate Nix, if it isn't already installed.
+2. Symlinks this repo to `~/.dotfiles`.
+3. Runs the first `home-manager switch` for the `jburnett@linux` configuration.
+4. Registers the Nix zsh in `/etc/shells` and `chsh`es your login shell to it.
+   Log out and back in for the new shell to take effect.
+
+Daily use is the same `./rebuild.sh` as on macOS (it runs `home-manager switch`
+on Linux instead of `darwin-rebuild`).
+
+**GHE_API_TOKEN on Linux:** there's no macOS Keychain, so the token is read from
+a gitignored file at shell startup. One-time setup:
+
+```sh
+mkdir -p ~/.config/dotfiles
+printf '%s' "<token>" > ~/.config/dotfiles/ghe-token
+chmod 600 ~/.config/dotfiles/ghe-token
+```
+
+macOS-only features (`system.defaults`, Homebrew casks/brews, `colima`) don't
+apply on Linux; the Docker daemon runs natively there.
 
 ## Daily use
 
@@ -93,6 +129,9 @@ The env file layers extras onto the shared base. Every field is optional (see
 
 Hosts that don't need extras pass `null` and get the base config unchanged.
 
+Linux hosts are declared under `homeConfigurations` (keyed `jburnett@linux`) and
+use the same env-file schema via `configuration-ubuntu.nix`.
+
 ### GHE_API_TOKEN (secret handling)
 
 The work profile exports `GHE_API_TOKEN` for GitHub Enterprise. The token is
@@ -119,7 +158,7 @@ If you clone it, change these before you run `bootstrap.sh`:
 
 - **Username and home path** (`jburnett` / `/Users/jburnett`), in `configuration.nix`
   (the `system.primaryUser`, `users.users.<name>`, and `nix-homebrew.user`
-  settings) and `home.nix` (`home.username` / `home.homeDirectory`).
+  settings) and `home-darwin.nix` / `home-linux.nix` (`home.username` / `home.homeDirectory`).
 - **Git identity** - this repo reads it from a gitignored, machine-local file
   rather than hardcoding it; `bootstrap.sh` prompts for your name and email and
   writes `.dotfiles-gituser.json`, which `flake.nix` reads at build time.
@@ -134,24 +173,34 @@ That means every time you switch, Homebrew removes any package or cask on your m
 If you already have Homebrew stuff installed that isn't in that list, the first switch will uninstall it.
 Read through `brews` and `casks` before you run `bootstrap.sh` or `rebuild.sh` for the first time, and add anything you want to keep.
 
-**About `herdr`:** it's in the `brews` list.
+**About `herdr`:** on macOS it's in the `brews` list.
 It's a real public Homebrew formula (`brew info herdr` finds it in homebrew-core, no tap needed), so it will install fine.
-If you don't use it, just remove it from `brews` in your copy.
+On Linux it's a Nix package instead (added in `home-linux.nix`, overlaid from
+nixpkgs-unstable since it isn't in the 26.05 stable channel yet).
+If you don't use it, remove it from `brews` (mac) or `home-linux.nix` (Linux) in your copy.
 
 **Heads-up:**
 
-- `home/AGENTS.md` is my personal agent policy, and `home.nix` installs it for Claude, Codex, and opencode.
+- `home/AGENTS.md` is my personal agent policy, and `home-common.nix` installs it for Claude, Codex, and opencode.
   If you clone this repo, you'd silently inherit my agent instructions - edit or delete `home/AGENTS.md` if you don't want that.
-- The `cc` and `co` shell aliases in `home.nix` are high-agency shortcuts: `claude --dangerously-skip-permissions` and `codex --full-auto`.
+- The `cc` and `co` shell aliases in `home-common.nix` are high-agency shortcuts: `claude --dangerously-skip-permissions` and `codex --full-auto`.
   They're convenient for me, but know what they do before you use them.
 
 ## Repo tour
 
 - `flake.nix` - the entry point.
   Wires up nixpkgs, nix-darwin, home-manager, and nix-homebrew, and declares each
-  host in `darwinConfigurations` via `mkHost`.
+  macOS host in `darwinConfigurations` via `mkHost` and the Linux host in
+  `homeConfigurations` via `mkLinuxHome`.
 - `configuration.nix` - system-level config: macOS defaults, Homebrew.
-- `home.nix` - user-level config: shell, git, packages, and the symlinks described below.
+- `home-common.nix` - shared user-level config: shell, git, packages, starship,
+  and the symlinks described below. Imported by both platform wrappers.
+- `home-darwin.nix` / `home-linux.nix` - thin per-platform wrappers around
+  `home-common.nix`; each sets the home directory and adds only that platform's
+  packages/settings (e.g. `colima` on mac; `herdr`/`wezterm`/`claude-code` from
+  Nix on Linux).
+- `configuration-ubuntu.nix` - optional Linux work env, layered onto the base by
+  `mkLinuxHome` (the Linux analogue of `configuration-studiob.nix`).
 - `<host>-configuration.nix` - optional per-environment extras layered onto the
   base (e.g. `configuration-studiob.nix`). See "Per-environment config" above.
 - `bootstrap.sh` - one-time fresh-machine setup; `--for <HostName>` selects the config.
@@ -162,7 +211,7 @@ If you don't use it, just remove it from `brews` in your copy.
 ## How the symlinks work
 
 The files under `home/` are the real files - editing them here is editing your live config, no rebuild needed to see the change in your editor.
-`home.nix` uses `mkOutOfStoreSymlink` to point paths like `~/.config/nvim` straight at `home/.config/nvim` in this repo, so the two never drift out of sync.
+`home-common.nix` uses `mkOutOfStoreSymlink` to point paths like `~/.config/nvim` straight at `home/.config/nvim` in this repo, so the two never drift out of sync.
 You only run `./rebuild.sh` when you change something that isn't just a symlinked file, like a package list or a system default.
 
 ## Notes
