@@ -15,6 +15,11 @@
   home.username = "jburnett";
   home.stateVersion = "24.11";
 
+  # Standalone home-manager: install the `home-manager` CLI into the user
+  # profile so rebuild.sh can call it directly. On mac the darwin module
+  # provides the tooling instead, so this is Linux-only.
+  programs.home-manager.enable = true;
+
   # No nix-darwin /etc/zshrc here, so home-manager must run compinit itself.
   # Reuse the same fast-path logic configuration.nix uses on mac (-C when the
   # dump is <24h old, else full rebuild+touch). Prepend it to the shared
