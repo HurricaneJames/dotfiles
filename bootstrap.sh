@@ -14,7 +14,7 @@ OS="$(uname -s)"   # Darwin or Linux
 # Which flake configuration (darwinConfigurations.<name>) to install.
 # Home profile is the default; pass --for StudioB for the work machine.
 if [ "$OS" = "Linux" ]; then
-  CONFIG="jburnett@linux"
+  CONFIG="linux-work"
 else
   CONFIG="Studio1"
 fi

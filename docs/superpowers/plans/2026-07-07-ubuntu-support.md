@@ -4,7 +4,7 @@
 
 **Goal:** Add a standalone-home-manager Linux build path so `bootstrap.sh`/`rebuild.sh` configure an Ubuntu 22.04 x86_64 machine the same way they configure a Mac, without disturbing the working nix-darwin path.
 
-**Architecture:** Split `home.nix` into a shared `home-common.nix` plus thin `home-darwin.nix` / `home-linux.nix` wrappers. `flake.nix` gains a Linux-pinned nixpkgs input and a `homeConfigurations."jburnett@linux"` output built by standalone home-manager. Homebrew-installed packages become Nix packages on Linux; `bootstrap.sh` sets zsh as the login shell (which home-manager cannot). A `configuration-ubuntu.nix` work env file layers on go/kubectl/ecr-helper, the anduril `NIX_PATH`, work Claude settings, and a file-sourced `GHE_API_TOKEN`.
+**Architecture:** Split `home.nix` into a shared `home-common.nix` plus thin `home-darwin.nix` / `home-linux.nix` wrappers. `flake.nix` gains a Linux-pinned nixpkgs input and a `homeConfigurations."linux-work"` output built by standalone home-manager. Homebrew-installed packages become Nix packages on Linux; `bootstrap.sh` sets zsh as the login shell (which home-manager cannot). A `configuration-ubuntu.nix` work env file layers on go/kubectl/ecr-helper, the anduril `NIX_PATH`, work Claude settings, and a file-sourced `GHE_API_TOKEN`.
 
 **Tech Stack:** Nix flakes, home-manager (standalone + darwin module), nix-darwin (mac only), bash.
 
@@ -32,7 +32,7 @@ Two adjustments were made while implementing (both verified and kept):
 There is no unit-test framework here — the "tests" are Nix evaluation/build commands. The two invariants every task must preserve:
 
 - **Mac stays green:** `nix eval --impure .#darwinConfigurations.Studio1.system.outPath` and `...StudioB...` still evaluate. (Requires `DOTFILES_GITUSER_FILE` set — see Task 0.)
-- **Linux builds:** after Task 3, `nix build --impure .#homeConfigurations."jburnett@linux".activationPackage` succeeds.
+- **Linux builds:** after Task 3, `nix build --impure .#homeConfigurations."linux-work".activationPackage` succeeds.
 
 We cannot run `darwin-rebuild` here (no Mac), so the Mac checks are `nix eval` (evaluation only), which is sufficient to catch the refactor breaking the darwin path.
 
@@ -291,7 +291,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ## Task 3: Add `home-linux.nix` and the flake Linux outputs
 
-Add the Linux nixpkgs/home-manager inputs, `mkLinuxHome`, the `homeConfigurations."jburnett@linux"` output, and the Linux wrapper. Uses a placeholder env of `null` first so we can verify the base build before adding the work env file (Task 4).
+Add the Linux nixpkgs/home-manager inputs, `mkLinuxHome`, the `homeConfigurations."linux-work"` output, and the Linux wrapper. Uses a placeholder env of `null` first so we can verify the base build before adding the work env file (Task 4).
 
 **Files:**
 - Create: `home-linux.nix`
@@ -380,7 +380,7 @@ Then in the returned attrset, after the `darwinConfigurations = { ... };` block,
 ```nix
       homeConfigurations = {
         # One fixed entry serves any Linux box (hostname-independent).
-        "jburnett@linux" = mkLinuxHome ./configuration-ubuntu.nix;
+        "linux-work" = mkLinuxHome ./configuration-ubuntu.nix;
       };
 ```
 
@@ -397,7 +397,7 @@ Task 4 writes the real file, but the flake now references it, so create a minima
 Run:
 ```bash
 export DOTFILES_GITUSER_FILE="$PWD/.dotfiles-gituser.json"
-nix build --impure .#homeConfigurations."jburnett@linux".activationPackage --no-link --print-out-paths
+nix build --impure .#homeConfigurations."linux-work".activationPackage --no-link --print-out-paths
 ```
 Expected: a `/nix/store/...-home-manager-generation` path prints, no error. (Fetches the Linux nixpkgs on first run — may take a while.)
 
@@ -482,11 +482,11 @@ Replace the stub with the full work env (go/kubectl/ecr-helper, anduril NIX_PATH
 Run:
 ```bash
 export DOTFILES_GITUSER_FILE="$PWD/.dotfiles-gituser.json"
-nix build --impure .#homeConfigurations."jburnett@linux".activationPackage --no-link --print-out-paths
+nix build --impure .#homeConfigurations."linux-work".activationPackage --no-link --print-out-paths
 ```
 Expected: builds, prints a store path. To spot-check the env was applied, confirm `go` is in the closure:
 ```bash
-OUT=$(nix build --impure .#homeConfigurations."jburnett@linux".activationPackage --no-link --print-out-paths)
+OUT=$(nix build --impure .#homeConfigurations."linux-work".activationPackage --no-link --print-out-paths)
 grep -rl "GHE_API_TOKEN" "$OUT/home-files/.zshrc" && echo TOKEN_LINE_PRESENT
 ```
 Expected: `TOKEN_LINE_PRESENT` (the generated `.zshrc` contains the token-reading line).
@@ -525,7 +525,7 @@ CONFIG="Studio1"
 with:
 ```bash
 if [ "$OS" = "Linux" ]; then
-  CONFIG="jburnett@linux"
+  CONFIG="linux-work"
 else
   CONFIG="Studio1"
 fi
@@ -624,7 +624,7 @@ Expected: `SYNTAX_OK`. If shellcheck runs, no new errors vs. the mac original (p
 Verify the eval-check path works without actually switching:
 ```bash
 export DOTFILES_GITUSER_FILE="$PWD/.dotfiles-gituser.json"
-nix eval --impure --raw '.#homeConfigurations."jburnett@linux".activationPackage.outPath' && echo EVAL_OK
+nix eval --impure --raw '.#homeConfigurations."linux-work".activationPackage.outPath' && echo EVAL_OK
 ```
 Expected: a store path then `EVAL_OK` — confirming the validation command the script uses succeeds.
 
@@ -827,7 +827,7 @@ git clone <this repo> ~/dotfiles && cd ~/dotfiles
 
 1. Installs Determinate Nix if it isn't already present.
 2. Symlinks the repo to `~/.dotfiles`.
-3. Runs the first `home-manager switch` for `jburnett@linux`.
+3. Runs the first `home-manager switch` for `linux-work`.
 4. Registers the Nix zsh in `/etc/shells` and `chsh`es your login shell to it.
    Log out and back in for the new shell to take effect.
 
@@ -890,7 +890,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 - [ ] **Linux path builds:**
   ```bash
-  nix build --impure .#homeConfigurations."jburnett@linux".activationPackage --no-link --print-out-paths
+  nix build --impure .#homeConfigurations."linux-work".activationPackage --no-link --print-out-paths
   ```
   Prints a store path.
 
@@ -907,7 +907,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 - Every spec section maps to a task: flake changes (T3), home-common (T1),
   home-darwin (T2), home-linux (T3), configuration-ubuntu (T4), bootstrap (T5),
   rebuild (T6), zsh login shell (T5/T7), README/docs (T8).
-- Type/name consistency: the config key `"jburnett@linux"` and the attr path
+- Type/name consistency: the config key `"linux-work"` and the attr path
   `homeConfigurations."<key>".activationPackage` are used identically in the
   flake (T3), bootstrap (T5), rebuild (T6), and every verification block.
 - `home-common.nix` signature `{ gitUser, envFile, homeDirectory, extraPackages ? [] }`
