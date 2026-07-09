@@ -99,7 +99,7 @@
 
       homeConfigurations = {
         # One fixed entry serves any Linux box (hostname-independent).
-        "jburnett@linux" = mkLinuxHome ./configuration-ubuntu.nix;
+        "linux-work" = mkLinuxHome ./configuration-ubuntu.nix;
       };
     };
 }

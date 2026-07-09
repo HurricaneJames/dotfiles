@@ -30,7 +30,7 @@ Homebrew installed, and shell-setup handled by the bootstrap script.
   the anduril `NIX_PATH`, work Claude settings, and `GHE_API_TOKEN`.
 - **`GHE_API_TOKEN` comes from a gitignored file** (`~/.config/dotfiles/ghe-token`,
   mode 600) sourced at shell startup — there is no macOS Keychain on Linux.
-- **The Linux homeConfiguration is keyed by a fixed name** `jburnett@linux`
+- **The Linux homeConfiguration is keyed by a fixed name** `linux-work`
   (hostname-independent); one entry serves any Linux box.
 
 ## Architecture
@@ -43,7 +43,7 @@ Homebrew installed, and shell-setup handled by the bootstrap script.
                 /                          \
           Darwin                          Linux
    darwin-rebuild switch          home-manager switch
-   .#darwinConfigurations.<H>     .#homeConfigurations."jburnett@linux"
+   .#darwinConfigurations.<H>     .#homeConfigurations."linux-work"
           |                                  |
    configuration.nix                  (no system layer)
    (system.defaults, homebrew)              |
@@ -98,7 +98,7 @@ Add the output alongside the untouched `darwinConfigurations`:
 
 ```nix
 homeConfigurations = {
-  "jburnett@linux" = mkLinuxHome ./configuration-ubuntu.nix;
+  "linux-work" = mkLinuxHome ./configuration-ubuntu.nix;
 };
 ```
 
@@ -256,8 +256,8 @@ Linux branch:
    Idempotent. None of mac's `/usr/local/bin/nix-env` secure_path workarounds
    apply on Linux.
 
-Config selection: Linux defaults `CONFIG` to `jburnett@linux` and validates it
-via `nix eval --impure .#homeConfigurations."jburnett@linux".activationPackage`
+Config selection: Linux defaults `CONFIG` to `linux-work` and validates it
+via `nix eval --impure .#homeConfigurations."linux-work".activationPackage`
 (parallel to the darwin `config_exists` check). `--for` is not needed on Linux
 (single fixed config), but the shared profile-file machinery still works.
 
@@ -287,7 +287,7 @@ The git-identity-file existence check and `~/.dotfiles` symlink stay shared.
 ## Verification
 
 - `nix flake check --no-build` passes.
-- `nix build .#homeConfigurations."jburnett@linux".activationPackage` builds.
+- `nix build .#homeConfigurations."linux-work".activationPackage` builds.
 - Existing darwin outputs still evaluate:
   `nix eval .#darwinConfigurations.Studio1.system.outPath` (and StudioB).
 - On the Ubuntu box: `./bootstrap.sh` completes; a new login shell is the Nix

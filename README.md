@@ -78,7 +78,7 @@ cd ~/dotfiles
 
 1. Installs Determinate Nix, if it isn't already installed.
 2. Symlinks this repo to `~/.dotfiles`.
-3. Runs the first `home-manager switch` for the `jburnett@linux` configuration.
+3. Runs the first `home-manager switch` for the `linux-work` configuration.
 4. Registers the Nix zsh in `/etc/shells` and `chsh`es your login shell to it.
    Log out and back in for the new shell to take effect.
 
@@ -129,7 +129,7 @@ The env file layers extras onto the shared base. Every field is optional (see
 
 Hosts that don't need extras pass `null` and get the base config unchanged.
 
-Linux hosts are declared under `homeConfigurations` (keyed `jburnett@linux`) and
+Linux hosts are declared under `homeConfigurations` (keyed `linux-work`) and
 use the same env-file schema via `configuration-ubuntu.nix`.
 
 ### GHE_API_TOKEN (secret handling)
