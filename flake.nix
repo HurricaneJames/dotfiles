@@ -12,9 +12,14 @@
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
     nix-homebrew.url = "github:zhaofengli/nix-homebrew";
+
+    # Worktree-pool manager. Not in nixpkgs, so we consume the upstream flake's
+    # package output directly and pin nixpkgs to ours for a single toolchain.
+    treehouse.url = "github:kunchenguid/treehouse";
+    treehouse.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = inputs@{ self, nix-darwin, nix-homebrew, home-manager, nixpkgs }:
+  outputs = inputs@{ self, nix-darwin, nix-homebrew, home-manager, nixpkgs, treehouse }:
     let
       # The git identity is machine-local and untracked (a work email must not
       # live in this public repo), so bootstrap.sh writes it and every profile
@@ -57,7 +62,7 @@
             # of aborting the activation. Lets a machine adopt these dotfiles
             # without hand-removing what was there first.
             home-manager.backupFileExtension = "hm-bak";
-            home-manager.users.jburnett = import ./home.nix { inherit gitUser envFile; };
+            home-manager.users.jburnett = import ./home.nix { inherit gitUser envFile treehouse; };
           }
         ];
       };

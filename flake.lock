@@ -98,7 +98,28 @@
         "home-manager": "home-manager",
         "nix-darwin": "nix-darwin",
         "nix-homebrew": "nix-homebrew",
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": "nixpkgs",
+        "treehouse": "treehouse"
+      }
+    },
+    "treehouse": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1783723094,
+        "narHash": "sha256-RUY49iz+ycbQT1RD3+/hownagVr0xofauB6lJEWVR+I=",
+        "owner": "kunchenguid",
+        "repo": "treehouse",
+        "rev": "81cc00172b3615cde67ff6fb0f99679a1274210e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "kunchenguid",
+        "repo": "treehouse",
+        "type": "github"
       }
     }
   },

@@ -1,7 +1,7 @@
 # `envFile` is an optional path to an environment-specific config (or null).
 # When set it layers extra home packages, zsh session variables and zsh init
 # content onto the shared base. See configuration-studiob.nix for the schema.
-{ gitUser, envFile }:
+{ gitUser, envFile, treehouse }:
 
 { config, pkgs, ... }:
 
@@ -49,6 +49,8 @@ in
     docker-client
     docker-compose
     colima                        # rootless container runtime VM for macOS
+    # worktree-pool manager (from its own flake, not nixpkgs)
+    treehouse.packages.${pkgs.stdenv.hostPlatform.system}.default
     # the font everything renders in
     nerd-fonts.hack
   ] ++ (env.homePackages or [ ]);
