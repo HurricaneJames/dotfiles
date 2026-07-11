@@ -3,11 +3,22 @@
 # content onto the shared base. See configuration-studiob.nix for the schema.
 { gitUser, envFile, treehouse }:
 
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 let
   dotfiles = "${config.home.homeDirectory}/.dotfiles";
   env = if envFile == null then { } else import envFile { inherit pkgs; };
+
+  # nvm isn't in nixpkgs (it's an imperative, shell-sourced version manager that
+  # downloads node binaries into $NVM_DIR at runtime - fine on macOS). We pin the
+  # upstream repo and source nvm.sh from the store; node versions still install
+  # into the writable ~/.nvm. Bump `rev` + `hash` to upgrade nvm itself.
+  nvmSrc = pkgs.fetchFromGitHub {
+    owner = "nvm-sh";
+    repo = "nvm";
+    rev = "v0.40.5";
+    hash = "sha256-bcHoRW3BzvWZYwVyhtYWl8erpgOp4l30JW4XOaGZMQ0=";
+  };
 
   # Config files symlinked edit-in-place: the real file stays in my repo, the
   # target under $HOME just points at it. Keyed by target (relative to $HOME),
@@ -41,6 +52,7 @@ in
     mosh
     # languages / runtimes
     python314
+    pnpm                          # node package manager (node itself via nvm, below)
     # git tooling (git itself is installed via programs.git below)
     gh
     git-lfs
@@ -57,6 +69,21 @@ in
   fonts.fontconfig.enable = true;
   home.sessionVariables.EDITOR = "nvim";
 
+  # On first activation (when nvm arrives / ~/.nvm has no default yet), install
+  # the latest LTS ("stable") node and make it the default. Idempotent: once a
+  # default alias exists we skip it, so later rebuilds don't re-download. Kept
+  # non-fatal - an offline rebuild just warns instead of failing activation.
+  home.activation.nvmDefaultNode = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    export NVM_DIR="${config.home.homeDirectory}/.nvm"
+    $DRY_RUN_CMD mkdir -p "$NVM_DIR"
+    if [ ! -e "$NVM_DIR/alias/default" ]; then
+      export PATH="${lib.makeBinPath [ pkgs.curl pkgs.gnutar pkgs.gzip pkgs.gnugrep pkgs.gnused pkgs.gawk pkgs.coreutils ]}:$PATH"
+      echo "nvm: installing latest LTS node as default (first-time setup)..."
+      $DRY_RUN_CMD ${pkgs.bash}/bin/bash -c '. "${nvmSrc}/nvm.sh" --no-use && nvm install --lts --default --no-progress' \
+        || echo "nvm: node install failed (offline?) - run 'nvm install --lts --default' later"
+    fi
+  '';
+
   programs.zsh = {
     enable = true;
     enableCompletion = false;          # /etc/zshrc (nix-darwin) already runs compinit; avoid a 2nd ~3s compinit
@@ -66,6 +93,17 @@ in
       setopt nomenucomplete
       setopt noautomenu
       bindkey '^f' autosuggest-accept
+
+      # nvm, lazy-loaded: sourcing nvm.sh eagerly adds ~100-300ms to every shell
+      # start, so instead we install thin shims that source it (from the pinned
+      # store copy) on first use of nvm/node/npm/npx, then hand off to the real
+      # command. Sourcing auto-activates the `default` alias, so node lands on PATH.
+      export NVM_DIR="$HOME/.nvm"
+      _nvm_lazy() { unset -f nvm node npm npx 2>/dev/null; . "${nvmSrc}/nvm.sh"; }
+      nvm()  { _nvm_lazy; nvm "$@"; }
+      node() { _nvm_lazy; node "$@"; }
+      npm()  { _nvm_lazy; npm "$@"; }
+      npx()  { _nvm_lazy; npx "$@"; }
     '' + (env.zshInitContent or "");
     sessionVariables = {
       CLICOLOR = "1";
