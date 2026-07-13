@@ -21,6 +21,13 @@
     # it's still pinned in flake.lock and only moves on `nix flake update`.
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
 
+    # nixGL wraps Nix-built GUI apps so they can reach the system's GPU drivers
+    # on a non-NixOS distro (Ubuntu here). Without it, Nix's wezterm can't find
+    # libEGL and the GUI dies with "Failed to create window". Linux-only; macOS
+    # never touches it. Follows the Linux nixpkgs to avoid a second tree.
+    nixGL.url = "github:nix-community/nixGL";
+    nixGL.inputs.nixpkgs.follows = "nixpkgs-linux";
+
     nix-homebrew.url = "github:zhaofengli/nix-homebrew";
 
     # Worktree-pool manager. Not in nixpkgs, so we consume the upstream flake's
@@ -29,8 +36,8 @@
     treehouse.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = inputs@{ self, nix-darwin, nix-homebrew, home-manager, nixpkgs, treehouse
-                   , nixpkgs-linux, home-manager-linux, nixpkgs-unstable }:
+  outputs = inputs@{ self, nix-darwin, nix-homebrew, home-manager, nixpkgs
+                   , nixpkgs-linux, home-manager-linux, nixpkgs-unstable, nixGL, treehouse }:
     let
       # The git identity is machine-local and untracked (a work email must not
       # live in this public repo), so bootstrap.sh writes it and every profile
@@ -94,7 +101,7 @@
             config.allowUnfree = true;
             overlays = [ (_: _: { herdr = unstable.herdr; }) ];
           };
-          modules = [ (import ./home-linux.nix { inherit gitUser envFile treehouse; }) ];
+          modules = [ (import ./home-linux.nix { inherit gitUser envFile nixGL treehouse; }) ];
         };
     in {
       darwinConfigurations = {

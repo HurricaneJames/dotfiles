@@ -1,7 +1,7 @@
 # Linux (standalone home-manager) wrapper: imports the shared config and adds
 # the Linux-only bits. `herdr`/`wezterm`/`claude-code` come from Homebrew on
 # mac; on Linux there is no Homebrew, so they install as Nix packages here.
-{ gitUser, envFile, treehouse }:
+{ gitUser, envFile, nixGL, treehouse }:
 
 { config, pkgs, lib, ... }:
 
@@ -9,11 +9,25 @@
   imports = [ (import ./home-common.nix {
     inherit gitUser envFile treehouse;
     homeDirectory = "/home/jburnett";
-    extraPackages = with pkgs; [ herdr wezterm claude-code ];
+    # wezterm is a GUI app: on Ubuntu (non-NixOS) it can't reach the system GPU
+    # driver on its own, so wrap it with nixGL (see targets.genericLinux.nixGL
+    # below). herdr/claude-code are CLI-only and need no wrapping.
+    extraPackages = [ (config.lib.nixGL.wrap pkgs.wezterm) ]
+      ++ (with pkgs; [ herdr claude-code ]);
   }) ];
 
   home.username = "jburnett";
   home.stateVersion = "24.11";
+
+  # Non-NixOS integration. `enable` puts ~/.nix-profile/share on XDG_DATA_DIRS
+  # so GNOME lists the wezterm .desktop entry, and points GL-using apps at a
+  # working driver. `nixGL.packages` + the default `mesa` wrapper make
+  # `config.lib.nixGL.wrap` actually wrap (it's a no-op until packages is set).
+  # Mesa/Intel iGPU is used deliberately: a terminal doesn't need the discrete
+  # NVIDIA GPU, and the mesa wrapper avoids pinning the exact NVIDIA driver
+  # version (and the --impure nvidia wrapper needs).
+  targets.genericLinux.enable = true;
+  targets.genericLinux.nixGL.packages = nixGL.packages;
 
   # Standalone home-manager: install the `home-manager` CLI into the user
   # profile so rebuild.sh can call it directly. On mac the darwin module
