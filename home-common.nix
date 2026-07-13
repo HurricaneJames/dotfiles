@@ -47,7 +47,7 @@ in
     # cli i use constantly
     ripgrep   # fast search
     fd        # fast find
-    fzf       # fuzzy finder
+    # fzf is installed + wired into zsh via programs.fzf below (ctrl-r / ctrl-t / alt-c)
     jq        # json on the command line
     lazygit
     neovim
@@ -131,6 +131,16 @@ in
       co = "codex --full-auto";
       k = "kubectl";
     } // (env.zshShellAliases or { });
+  };
+
+  # fzf shell integration. enableZshIntegration binds ctrl-r (fuzzy history
+  # search), ctrl-t (file paths) and alt-c (cd into dir). The default zsh keymap
+  # here is viins - because EDITOR=nvim makes zsh pick the vi keymap, where the
+  # builtin ctrl-r (history-incremental-search-backward) is unbound - so fzf's
+  # widget is what makes reverse search work at all.
+  programs.fzf = {
+    enable = true;
+    enableZshIntegration = true;
   };
 
   programs.git.enable = true;
