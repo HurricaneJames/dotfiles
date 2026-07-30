@@ -16,7 +16,9 @@
 
   # Extra homebrew casks / brews (appended to configuration.nix's homebrew set).
   casks = [ ];
-  brews = [ ];
+  brews = [
+    "circleci"  # CircleCI local CLI
+  ];
 
   # Override the source of specific home.file config symlinks for this env
   # (see home.nix). Keyed by target relative to $HOME, valued by source
@@ -43,7 +45,14 @@
   #
   # (that prompts for the token value and stores it in the login keychain;
   # the first read pops an "allow access" dialog - click "Always Allow").
+  #
+  # CIRCLECI_CLI_TOKEN is handled the same way for the CircleCI CLI. One-time
+  # setup on this machine:
+  #
+  #     security add-generic-password -a "$USER" -s CIRCLECI_CLI_TOKEN -w
+  #
   zshInitContent = ''
     export GHE_API_TOKEN="$(security find-generic-password -a "$USER" -s GHE_API_TOKEN -w 2>/dev/null)"
+    export CIRCLECI_CLI_TOKEN="$(security find-generic-password -a "$USER" -s CIRCLECI_CLI_TOKEN -w 2>/dev/null)"
   '';
 }
