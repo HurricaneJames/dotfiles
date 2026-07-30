@@ -94,6 +94,12 @@ in
       setopt noautomenu
       bindkey '^f' autosuggest-accept
 
+      # Ctrl+Left / Ctrl+Right = move by word. WezTerm sends the xterm
+      # modified-arrow sequences (ESC[1;5D / ESC[1;5C); without these binds
+      # zsh has no match and leaks the ";5D"/";5C" tail as literal text.
+      bindkey '^[[1;5D' backward-word
+      bindkey '^[[1;5C' forward-word
+
       # nvm, lazy-loaded: sourcing nvm.sh eagerly adds ~100-300ms to every shell
       # start, so instead we install thin shims that source it (from the pinned
       # store copy) on first use of nvm/node/npm/npx, then hand off to the real
