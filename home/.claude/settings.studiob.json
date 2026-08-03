@@ -1,5 +1,5 @@
 {
-  "awsAuthRefresh": "aws sso login --sso-session anduril.commercial 1>&2",
+  "apiKeyHelper": "'/Users/jburnett/Library/Application Support/dx/bin/authorization' bearer --profile ai.bifrost --interactive yes",
   "companyAnnouncements": [
     "\n █████╗ ███╗   ██╗██████╗ ██╗   ██╗██████╗ ██╗██╗     \n██╔══██╗████╗  ██║██╔══██╗██║   ██║██╔══██╗██║██║     \n███████║██╔██╗ ██║██║  ██║██║   ██║██████╔╝██║██║     \n██╔══██║██║╚██╗██║██║  ██║██║   ██║██╔══██╗██║██║     \n██║  ██║██║ ╚████║██████╔╝╚██████╔╝██║  ██║██║███████╗\n╚═╝  ╚═╝╚═╝  ╚═══╝╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝╚══════╝\nExplore custom anduril plugins (/plugins) • Need help? Ask in #help-dx or #claude-code!\n"
   ],
@@ -10,19 +10,15 @@
     "superpowers@claude-plugins-official": true
   },
   "env": {
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "us.anthropic.claude-sonnet-5[1m]",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "us.anthropic.claude-opus-5[1m]",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "us.anthropic.claude-sonnet-5[1m]",
-    "ANTHROPIC_SMALL_FAST_MODEL": "us.anthropic.claude-sonnet-4-6",
-    "ANTHROPIC_MODEL": "us.anthropic.claude-opus-5[1m]",
-    "AWS_PROFILE": "bedrock.commercial",
-    "AWS_REGION": "us-west-2",
+    "ANTHROPIC_BASE_URL": "https://ai.anduril.dev/anthropic",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-5[1m]",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-5[1m]",
     "CLAUDE_CODE_ATTRIBUTION_HEADER": "0",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
     "CLAUDE_CODE_ENABLE_TELEMETRY": "1",
-    "CLAUDE_CODE_SUBAGENT_MODEL": "us.anthropic.claude-opus-5[1m]",
-    "CLAUDE_CODE_USE_BEDROCK": "1",
-    "CLAUDE_CODE_USE_MANTLE": "1",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "claude-sonnet-5[1m]",
+    "ENABLE_TOOL_SEARCH": "true",
     "OTEL_EXPORTER_OTLP_ENDPOINT": "https://armory.anduril.dev",
     "OTEL_EXPORTER_OTLP_PROTOCOL": "http/json",
     "OTEL_LOGS_EXPORTER": "otlp",

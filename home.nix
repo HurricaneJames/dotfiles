@@ -129,7 +129,7 @@ in
       cc = "claude --dangerously-skip-permissions";
       co = "codex --full-auto";
       k = "kubectl";
-    };
+    } // (env.zshShellAliases or { });
   };
 
   programs.git.enable = true;

@@ -27,6 +27,17 @@
     ".claude/settings.json" = "home/.claude/settings.studiob.json";
   };
 
+  # Extra zsh shell aliases (merged into home.nix's shellAliases).
+  #
+  # pi must go through `dx ai pi`, never the bare binary: the launcher refreshes
+  # the Bifrost authorization session so pi's token command can mint
+  # non-interactively, and clears the provider env (ANTHROPIC_*, AWS_*, OPENAI_*,
+  # GOOGLE_*) that would otherwise route around the gateway. A bare `pi` reaches
+  # pi's built-in default provider directly via ambient credentials.
+  zshShellAliases = {
+    pi = "~/go/bin/dx ai pi";
+  };
+
   # Extra zsh session variables (merged into home.nix's sessionVariables).
   # For non-secret values only - these are baked into the world-readable
   # /nix/store. Secrets belong in zshInitContent below (read at shell startup).
