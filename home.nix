@@ -16,8 +16,8 @@ let
   nvmSrc = pkgs.fetchFromGitHub {
     owner = "nvm-sh";
     repo = "nvm";
-    rev = "v0.40.5";
-    hash = "sha256-bcHoRW3BzvWZYwVyhtYWl8erpgOp4l30JW4XOaGZMQ0=";
+    rev = "v0.40.6";
+    hash = "sha256-60diMTawrIlyB29GrYcRuv5RBawGxpW82FHYWmHQgbg=";
   };
 
   # Config files symlinked edit-in-place: the real file stays in my repo, the
@@ -69,19 +69,25 @@ in
   fonts.fontconfig.enable = true;
   home.sessionVariables.EDITOR = "nvim";
 
-  # On first activation (when nvm arrives / ~/.nvm has no default yet), install
-  # the latest LTS ("stable") node and make it the default. Idempotent: once a
-  # default alias exists we skip it, so later rebuilds don't re-download. Kept
-  # non-fatal - an offline rebuild just warns instead of failing activation.
+  # Every activation, install the current latest LTS node and point `default` at
+  # it, so a new LTS line lands on the next rebuild instead of the default
+  # staying pinned to whatever was newest at first setup. nvm no-ops when that
+  # version is already present, so the steady-state cost is one version lookup.
+  # `nvm alias default` is explicit on purpose: install's own `--default` only
+  # creates the alias when none exists, so it would never advance an old pin.
+  # Kept non-fatal - an offline rebuild just warns instead of failing activation.
   home.activation.nvmDefaultNode = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     export NVM_DIR="${config.home.homeDirectory}/.nvm"
     $DRY_RUN_CMD mkdir -p "$NVM_DIR"
-    if [ ! -e "$NVM_DIR/alias/default" ]; then
-      export PATH="${lib.makeBinPath [ pkgs.curl pkgs.gnutar pkgs.gzip pkgs.gnugrep pkgs.gnused pkgs.gawk pkgs.coreutils ]}:$PATH"
-      echo "nvm: installing latest LTS node as default (first-time setup)..."
-      $DRY_RUN_CMD ${pkgs.bash}/bin/bash -c '. "${nvmSrc}/nvm.sh" --no-use && nvm install --lts --default --no-progress' \
-        || echo "nvm: node install failed (offline?) - run 'nvm install --lts --default' later"
-    fi
+    export PATH="${lib.makeBinPath [ pkgs.curl pkgs.gnutar pkgs.gzip pkgs.gnugrep pkgs.gnused pkgs.gawk pkgs.coreutils ]}:$PATH"
+    echo "nvm: ensuring latest LTS node is the default..."
+    $DRY_RUN_CMD ${pkgs.bash}/bin/bash -c '
+      . "${nvmSrc}/nvm.sh" --no-use || exit 1
+      nvm install --lts --no-progress || exit 1
+      latest="$(nvm version "lts/*")"
+      [ "$latest" = "N/A" ] && exit 1
+      nvm alias default "$latest"
+    ' || echo "nvm: node install failed (offline?) - run 'nvm install --lts --default' later"
   '';
 
   programs.zsh = {
