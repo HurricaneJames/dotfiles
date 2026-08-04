@@ -81,7 +81,52 @@ ensure_nix_on_secure_path
 # for the nix binary).
 DARWIN_REBUILD="$(command -v darwin-rebuild)"
 
+# Reconcile the dx-managed AI tooling (Anduril work machines only).
+#
+# These tools aren't nix-managed: dx installs their binaries under
+# ~/Library/Application Support/dx and owns ~/.claude/settings.json and
+# ~/.pi/agent/settings.json. The Bifrost gateway enforces a minimum claude
+# version, so leaving this to drift means a tool that stops talking to the
+# gateway. Running it here keeps "rebuild.sh brought this machine up to date"
+# true for the AI tooling too, not just the nix closure.
+#
+# dx follows the home-manager symlink chain and merges into the real file in
+# this repo (it prints "Following symlink: ..."), so gateway settings it
+# changes land as a reviewable git diff rather than being lost on next switch.
+#
+# claude: --migrate is the full reconcile (version check, gateway validation,
+#   settings merge, plus purging any leftover Bedrock config).
+# pi:     has no --migrate; --setup is its reconcile path. Its authorization
+#   phase may open a browser to establish the Bifrost session - that's wanted
+#   here, since a rebuild is exactly when a stale session should get renewed.
+#
+# pi deliberately gets no --interactive flag, so it defaults to `auto`: it can
+# prompt (and open a browser) from a terminal, and degrades instead of hanging
+# when there's no TTY, e.g. an unattended rebuild.
+#
+# Non-fatal by design: an offline or unauthenticated rebuild should still
+# finish the nix switch rather than failing at the last step.
+reconcile_dx_ai() {
+  local dx="$HOME/go/bin/dx"
+  [ -x "$dx" ] || return 0
+
+  echo "==> dx: reconciling AI tooling (claude, pi)"
+  "$dx" ai claude --migrate --quiet --interactive=no \
+    || echo "dx: claude reconcile failed (offline? run '$dx ai claude --migrate' later)"
+  "$dx" ai pi --setup \
+    || echo "dx: pi reconcile failed (offline? run '$dx ai pi --setup' later)"
+
+  # Each run writes a settings.backup.<epoch>.json next to the config; without
+  # this they accumulate one per rebuild, forever.
+  "$dx" ai claude --clean --interactive=no >/dev/null 2>&1 || true
+  "$dx" ai pi --clean --interactive=no >/dev/null 2>&1 || true
+}
+
 # --impure + inline VAR=val so the flake can read the gitignored identity file
 # even though sudo resets the environment.
-exec sudo DOTFILES_GITUSER_FILE="$GITUSER_FILE" \
+#
+# Not `exec` - there's a post-switch step below.
+sudo DOTFILES_GITUSER_FILE="$GITUSER_FILE" \
   "$DARWIN_REBUILD" switch --impure --flake "$DIR#$CONFIG"
+
+reconcile_dx_ai

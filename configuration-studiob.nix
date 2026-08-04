@@ -20,6 +20,15 @@
     "circleci"  # CircleCI local CLI
   ];
 
+  # Casks from configuration.nix's base list to NOT install here.
+  #
+  # dx owns the claude binary on this machine: `dx ai claude --migrate` (run from
+  # rebuild.sh) enforces the minimum version the Bifrost gateway requires and
+  # installs into ~/Library/Application Support/dx/bin. Keeping the brew cask too
+  # gave us two claudes at different versions, with brew's winning on PATH - so
+  # dx's version pin governed a binary nobody ran. One installer, one version.
+  excludeCasks = [ "claude-code" ];
+
   # Override the source of specific home.file config symlinks for this env
   # (see home.nix). Keyed by target relative to $HOME, valued by source
   # relative to the dotfiles repo root. Work needs its own Claude settings.
@@ -65,5 +74,15 @@
   zshInitContent = ''
     export GHE_API_TOKEN="$(security find-generic-password -a "$USER" -s GHE_API_TOKEN -w 2>/dev/null)"
     export CIRCLECI_CLI_TOKEN="$(security find-generic-password -a "$USER" -s CIRCLECI_CLI_TOKEN -w 2>/dev/null)"
+
+    # dx-managed tool binaries (claude, authorization, opencode, pi). This is
+    # exactly what `dx env` prints, inlined: that command costs ~25ms of Go
+    # process startup per shell just to echo a static string.
+    #
+    # Ahead of /opt/homebrew/bin on purpose - dx enforces the minimum claude
+    # version the Bifrost gateway requires, so its copy must be the one that
+    # wins. `pi` resolves here too, but keep using the alias below, not the
+    # bare binary.
+    export PATH="$HOME/Library/Application Support/dx/bin:$PATH"
   '';
 }

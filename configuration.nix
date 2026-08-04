@@ -1,9 +1,10 @@
 # `envFile` is an optional path to an environment-specific config (or null).
-# When set, its `casks`/`brews` lists are appended to the shared homebrew set.
-# See configuration-studiob.nix for the full schema.
+# When set, its `casks`/`brews` lists are appended to the shared homebrew set,
+# and its `excludeCasks` list is removed from the result (for a cask that some
+# other tool owns on that machine). See configuration-studiob.nix for the schema.
 { envFile }:
 
-{ pkgs, ... }:
+{ pkgs, lib, ... }:
 
 let
   env = if envFile == null then { } else import envFile { inherit pkgs; };
@@ -77,9 +78,9 @@ in
     brews = [
       "herdr"
     ] ++ (env.brews or [ ]);
-    casks = [
+    casks = lib.subtractLists (env.excludeCasks or [ ]) ([
       "wezterm"
       "claude-code"
-    ] ++ (env.casks or [ ]);
+    ] ++ (env.casks or [ ]));
   };
 }
