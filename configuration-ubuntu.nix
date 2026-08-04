@@ -43,5 +43,27 @@
   zshInitContent = ''
     [ -r "$HOME/.config/dotfiles/ghe-token" ] && \
       export GHE_API_TOKEN="$(cat "$HOME/.config/dotfiles/ghe-token")"
+
+    # dx-managed tool binaries (claude, authorization, opencode, pi). This is
+    # exactly what `dx env` prints, inlined: that command costs ~25ms of Go
+    # process startup per shell just to echo a static string. The path differs
+    # from mac's (~/Library/Application Support/dx/bin) - dx is XDG-aware here.
+    #
+    # Ahead of the Nix profile on purpose - dx enforces the minimum claude
+    # version the Bifrost gateway requires, so its copy must be the one that
+    # wins. `pi` resolves here too, but keep using the alias below, not the
+    # bare binary.
+    export PATH="$HOME/.local/share/dx/bin:$PATH"
   '';
+
+  # Extra zsh shell aliases (merged into home-common.nix's shellAliases).
+  #
+  # pi must go through `dx ai pi`, never the bare binary: the launcher refreshes
+  # the Bifrost authorization session so pi's token command can mint
+  # non-interactively, and clears the provider env (ANTHROPIC_*, AWS_*, OPENAI_*,
+  # GOOGLE_*) that would otherwise route around the gateway. A bare `pi` reaches
+  # pi's built-in default provider directly via ambient credentials.
+  zshShellAliases = {
+    pi = "~/go/bin/dx ai pi";
+  };
 }

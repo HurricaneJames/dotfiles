@@ -130,7 +130,14 @@ in
       cc = "claude --dangerously-skip-permissions";
       co = "codex --full-auto";
       k = "kubectl";
-    } // (env.zshShellAliases or { });
+    }
+    # macOS ships BSD ls, which colorizes off CLICOLOR=1 (set above) and errors
+    # on --color. Linux ships GNU coreutils ls, which ignores CLICOLOR entirely
+    # and only colorizes when given --color; so alias it there.
+    // lib.optionalAttrs pkgs.stdenv.isLinux {
+      ls = "ls --color=auto";
+    }
+    // (env.zshShellAliases or { });
   };
 
   # fzf shell integration. enableZshIntegration binds ctrl-r (fuzzy history

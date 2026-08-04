@@ -85,36 +85,11 @@ if [ -z "$CONFIG" ] || ! config_exists "$CONFIG"; then
   echo "==> Saved configuration '$CONFIG' to $PROFILE_FILE"
 fi
 
-if [ "$OS" = "Linux" ]; then
-  # Standalone home-manager: no sudo, no secure_path dance, no darwin-rebuild.
-  # Prefer the installed CLI; fall back to `nix run` when it isn't on PATH yet
-  # (e.g. the very first rebuild, before the profile is on this shell's PATH).
-  # --impure so the flake can read the gitignored identity file.
-  if command -v home-manager >/dev/null 2>&1; then
-    exec home-manager switch --impure --flake "$DIR#$CONFIG"
-  else
-    exec nix run github:nix-community/home-manager/release-26.05 -- \
-      switch --impure --flake "$DIR#$CONFIG"
-  fi
-fi
-
-# --- macOS: nix-darwin (everything below is unchanged) ----------------------
-
-# Make nix-env reachable from the home-manager activation step (see the helper).
-ensure_nix_on_secure_path
-
-# Resolve darwin-rebuild to an absolute path. sudo locates the command it runs
-# via the sudoers `secure_path`, NOT via any PATH= we pass; on a machine with a
-# managed secure_path (e.g. MDM/CyberArk) it excludes /run/current-system/sw/bin
-# and `sudo darwin-rebuild` fails with "command not found". Invoking the
-# absolute path skips sudo's PATH lookup entirely (same trick bootstrap.sh uses
-# for the nix binary).
-DARWIN_REBUILD="$(command -v darwin-rebuild)"
-
-# Reconcile the dx-managed AI tooling (Anduril work machines only).
+# Reconcile the dx-managed AI tooling (Anduril work machines, mac and Linux).
 #
-# These tools aren't nix-managed: dx installs their binaries under
-# ~/Library/Application Support/dx and owns ~/.claude/settings.json and
+# These tools aren't nix-managed: dx installs their binaries into its own data
+# dir (`dx env` prints the path - ~/Library/Application Support/dx/bin on mac,
+# ~/.local/share/dx/bin on Linux) and owns ~/.claude/settings.json and
 # ~/.pi/agent/settings.json. The Bifrost gateway enforces a minimum claude
 # version, so leaving this to drift means a tool that stops talking to the
 # gateway. Running it here keeps "rebuild.sh brought this machine up to date"
@@ -123,6 +98,23 @@ DARWIN_REBUILD="$(command -v darwin-rebuild)"
 # dx follows the home-manager symlink chain and merges into the real file in
 # this repo (it prints "Following symlink: ..."), so gateway settings it
 # changes land as a reviewable git diff rather than being lost on next switch.
+#
+# dx itself is updated first, and that ordering is load-bearing: an old dx
+# writes an OLD config over the repo's file (a stale dx rewrote the model pins
+# backwards here once). Reconciling with a stale dx is worse than not
+# reconciling, so the update is what makes the rest of this safe.
+#
+# The tool BINARIES need their own update step: neither reconcile path below
+# upgrades them, and they can't upgrade themselves. `dx ai pi --setup` only
+# checks that pi is *present* ("Checking pi installation") and then writes
+# config, so it happily left pi at 0.80.6 while 0.83.0 was current. pi's own
+# `pi update` can't fix that either - dx ships pi as a Bun single-file binary,
+# and pi's updater hard-refuses that install shape ("cannot self-update this
+# installation", pointing at GitHub releases) because it only knows how to
+# upgrade npm/pnpm/yarn/bun package installs. `dx module install` is the only
+# thing that moves these versions, so without it the binaries silently drift
+# while their configs stay reconciled - and the Bifrost gateway enforces a
+# minimum claude version, so that drift eventually breaks the tools.
 #
 # claude: --migrate is the full reconcile (version check, gateway validation,
 #   settings merge, plus purging any leftover Bedrock config).
@@ -140,6 +132,14 @@ reconcile_dx_ai() {
   local dx="$HOME/go/bin/dx"
   [ -x "$dx" ] || return 0
 
+  echo "==> dx: updating dx itself"
+  "$dx" update --interactive=no \
+    || echo "dx: self-update failed (offline? run '$dx update' later)"
+
+  echo "==> dx: updating AI tool binaries (claude, pi)"
+  "$dx" module install claude pi --interactive=no \
+    || echo "dx: module install failed (offline? run '$dx module install claude pi' later)"
+
   echo "==> dx: reconciling AI tooling (claude, pi)"
   "$dx" ai claude --migrate --quiet --interactive=no \
     || echo "dx: claude reconcile failed (offline? run '$dx ai claude --migrate' later)"
@@ -151,6 +151,37 @@ reconcile_dx_ai() {
   "$dx" ai claude --clean --interactive=no >/dev/null 2>&1 || true
   "$dx" ai pi --clean --interactive=no >/dev/null 2>&1 || true
 }
+
+if [ "$OS" = "Linux" ]; then
+  # Standalone home-manager: no sudo, no secure_path dance, no darwin-rebuild.
+  # Prefer the installed CLI; fall back to `nix run` when it isn't on PATH yet
+  # (e.g. the very first rebuild, before the profile is on this shell's PATH).
+  # --impure so the flake can read the gitignored identity file.
+  #
+  # Not `exec` - reconcile_dx_ai runs after the switch, as it does on mac.
+  if command -v home-manager >/dev/null 2>&1; then
+    home-manager switch --impure --flake "$DIR#$CONFIG"
+  else
+    nix run github:nix-community/home-manager/release-26.05 -- \
+      switch --impure --flake "$DIR#$CONFIG"
+  fi
+
+  reconcile_dx_ai
+  exit 0
+fi
+
+# --- macOS: nix-darwin (everything below is unchanged) ----------------------
+
+# Make nix-env reachable from the home-manager activation step (see the helper).
+ensure_nix_on_secure_path
+
+# Resolve darwin-rebuild to an absolute path. sudo locates the command it runs
+# via the sudoers `secure_path`, NOT via any PATH= we pass; on a machine with a
+# managed secure_path (e.g. MDM/CyberArk) it excludes /run/current-system/sw/bin
+# and `sudo darwin-rebuild` fails with "command not found". Invoking the
+# absolute path skips sudo's PATH lookup entirely (same trick bootstrap.sh uses
+# for the nix binary).
+DARWIN_REBUILD="$(command -v darwin-rebuild)"
 
 # --impure + inline VAR=val so the flake can read the gitignored identity file
 # even though sudo resets the environment.

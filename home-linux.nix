@@ -1,6 +1,13 @@
 # Linux (standalone home-manager) wrapper: imports the shared config and adds
-# the Linux-only bits. `herdr`/`wezterm`/`claude-code` come from Homebrew on
-# mac; on Linux there is no Homebrew, so they install as Nix packages here.
+# the Linux-only bits. `herdr`/`wezterm` come from Homebrew on mac; on Linux
+# there is no Homebrew, so they install as Nix packages here.
+#
+# claude is deliberately NOT here: dx owns it on work machines, the same split
+# mac makes via `excludeCasks = [ "claude-code" ]`. dx enforces the minimum
+# version the Bifrost gateway requires and installs into ~/.local/share/dx/bin
+# (on PATH via configuration-ubuntu.nix); a Nix claude-code alongside it gave
+# two claudes at different versions, with Nix's winning on PATH - so dx's
+# version pin governed a binary nobody ran. One installer, one version.
 { gitUser, envFile, nixGL, treehouse }:
 
 { config, pkgs, lib, ... }:
@@ -11,9 +18,9 @@
     homeDirectory = "/home/jburnett";
     # wezterm is a GUI app: on Ubuntu (non-NixOS) it can't reach the system GPU
     # driver on its own, so wrap it with nixGL (see targets.genericLinux.nixGL
-    # below). herdr/claude-code are CLI-only and need no wrapping.
+    # below). herdr is CLI-only and needs no wrapping.
     extraPackages = [ (config.lib.nixGL.wrap pkgs.wezterm) ]
-      ++ (with pkgs; [ herdr claude-code ]);
+      ++ (with pkgs; [ herdr ]);
   }) ];
 
   home.username = "jburnett";

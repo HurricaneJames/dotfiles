@@ -1,5 +1,5 @@
 {
-  "apiKeyHelper": "'/Users/jburnett/Library/Application Support/dx/bin/authorization' bearer --profile ai.bifrost --interactive yes",
+  "apiKeyHelper": "PATH=\"$HOME/.local/share/dx/bin:$HOME/Library/Application Support/dx/bin:$PATH\" authorization bearer --profile ai.bifrost --interactive yes",
   "companyAnnouncements": [
     "\n █████╗ ███╗   ██╗██████╗ ██╗   ██╗██████╗ ██╗██╗     \n██╔══██╗████╗  ██║██╔══██╗██║   ██║██╔══██╗██║██║     \n███████║██╔██╗ ██║██║  ██║██║   ██║██████╔╝██║██║     \n██╔══██║██║╚██╗██║██║  ██║██║   ██║██╔══██╗██║██║     \n██║  ██║██║ ╚████║██████╔╝╚██████╔╝██║  ██║██║███████╗\n╚═╝  ╚═╝╚═╝  ╚═══╝╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝╚══════╝\nExplore custom anduril plugins (/plugins) • Need help? Ask in #help-dx or #claude-code!\n"
   ],
